@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bombardino Sib - Ultra Rápido</title>
+    <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f0f2f5;
+        }
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            text-align: center; background: var(--bg); margin: 0; padding: 10px;
+            touch-action: manipulation;
+        }
+        .container {
+            max-width: 600px; margin: 0 auto; background: white; 
+            border-radius: 20px; padding: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .level-selector {
+            display: flex; overflow-x: auto; gap: 8px; padding: 10px 5px;
+            margin-bottom: 10px; border-bottom: 1px solid #eee;
+            scrollbar-width: none; -webkit-overflow-scrolling: touch;
+        }
+        .level-selector::-webkit-scrollbar { display: none; }
+        .level-btn {
+            flex: 0 0 auto; padding: 6px 12px; border-radius: 12px;
+            background: #dfe6e9; border: none; font-weight: bold; cursor: pointer; font-size: 0.85rem;
+        }
+        .level-btn.active { background: var(--accent); color: white; }
+        #canvas-container { width: 100%; display: flex; justify-content: center; min-height: 220px; margin: 10px 0; }
+        .button-row { display: flex; justify-content: space-between; gap: 4px; margin-top: 15px; width: 100%; }
+        button.note-btn { 
+            flex: 1; padding: 15px 0; font-size: 1rem; font-weight: bold; cursor: pointer; 
+            background: var(--primary); color: white; border: none; border-radius: 8px; min-width: 0;
+        }
+        button.note-btn:active { background: var(--accent); }
+        #feedback { min-height: 40px; margin-top: 10px; font-size: 1.2rem; font-weight: bold; transition: opacity 0.2s; }
+        .info-bar { display: flex; justify-content: space-between; font-size: 0.85rem; color: #636e72; padding: 0 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2 style="margin:0; color:var(--primary); font-size: 1.1rem;">Nivel <span id="current-lvl-display">1</span></h2>
+        <div class="level-selector" id="lvl-picker"></div>
+        <div class="info-bar">
+            <span id="score">Racha: 0</span>
+            <span id="range-info">Cargando...</span>
+        </div>
+        <div id="canvas-container"><div id="boo"></div></div>
+        <div class="button-row">
+            <button class="note-btn" onclick="checkAnswer('Do')">Do</button>
+            <button class="note-btn" onclick="checkAnswer('Re')">Re</button>
+            <button class="note-btn" onclick="checkAnswer('Mi')">Mi</button>
+            <button class="note-btn" onclick="checkAnswer('Fa')">Fa</button>
+            <button class="note-btn" onclick="checkAnswer('Sol')">Sol</button>
+            <button class="note-btn" onclick="checkAnswer('La')">La</button>
+            <button class="note-btn" onclick="checkAnswer('Si')">Si</button>
+        </div>
+        <div id="feedback"></div>
+    </div>
+
+    <script>
+        const { Renderer, Stave, StaveNote, Voice, Formatter } = Vex.Flow;
+        const allNotes = [
+            { key: "e/1", correct: "Fa" }, { key: "f/1", correct: "Sol" },
+            { key: "g/1", correct: "La" }, { key: "a/1", correct: "Si" },
+            { key: "b/1", correct: "Do" }, { key: "c/2", correct: "Re" },
+            { key: "d/2", correct: "Mi" }, { key: "e/2", correct: "Fa" },
+            { key: "f/2", correct: "Sol" }, { key: "g/2", correct: "La" },
+            { key: "a/2", correct: "Si" }, { key: "b/2", correct: "Do" },
+            { key: "c/3", correct: "Re" }, { key: "d/3", correct: "Mi" },
+            { key: "e/3", correct: "Fa" }, { key: "f/3", correct: "Sol" },
+            { key: "g/3", correct: "La" }, { key: "a/3", correct: "Si" },
+            { key: "b/3", correct: "Do" }, { key: "c/4", correct: "Re" },
+            { key: "d/4", correct: "Mi" }, { key: "e/4", correct: "Fa" },
+            { key: "f/4", correct: "Sol" }, { key: "g/4", correct: "La" },
+            { key: "a/4", correct: "Si" }
+        ];
+        const levels = [
+            { id: 1, range: [12, 16], name: "Re a La" },
+            { id: 2, range: [11, 17], name: "Do a Si" },
+            { id: 3, range: [10, 18], name: "Si a Do" },
+            { id: 4, range: [9, 19], name: "La a Re" },
+            { id: 5, range: [8, 20], name: "Sol a Mi" },
+            { id: 6, range: [7, 21], name: "Fa a Fa" },
+            { id: 7, range: [6, 22], name: "Mi a Sol" },
+            { id: 8, range: [4, 23], name: "Do a La" },
+            { id: 9, range: [2, 24], name: "La a Si (+ Líneas)" },
+            { id: 10, range: [0, 24], name: "Todo el Registro" }
+        ];
+
+        let currentLevelIdx = 0, currentNote = null, hits = 0, feedbackTimeout = null;
+
+        function initLevels() {
+            const container = document.getElementById('lvl-picker');
+            levels.forEach((lvl, index) => {
+                const btn = document.createElement('button');
+                btn.className = `level-btn ${index === 0 ? 'active' : ''}`;
+                btn.innerText = `Lvl ${lvl.id}`;
+                btn.onclick = (e) => { setLevel(index); e.target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); };
+                container.appendChild(btn);
+            });
+        }
+
+        function setLevel(index) {
+            currentLevelIdx = index; hits = 0;
+            document.querySelectorAll('.level-btn').forEach((b, i) => b.classList.toggle('active', i === index));
+            document.getElementById('current-lvl-display').innerText = levels[index].id;
+            document.getElementById('range-info').innerText = `Notas: ${levels[index].name}`;
+            document.getElementById('score').innerText = `Racha: 0`;
+            generateNote();
+        }
+
+        function generateNote() {
+            const div = document.getElementById("boo");
+            div.innerHTML = "";
+            const renderer = new Renderer(div, Renderer.Backends.SVG);
+            renderer.resize(320, 220); 
+            const context = renderer.getContext();
+            context.scale(1.2, 1.2);
+            const stave = new Stave(10, 40, 240); 
+            stave.addClef("bass").setContext(context).draw();
+
+            const lvl = levels[currentLevelIdx];
+            const availableNotes = allNotes.slice(lvl.range[0], lvl.range[1] + 1);
+            let nextNote;
+            do { nextNote = availableNotes[Math.floor(Math.random() * availableNotes.length)]; } 
+            while (nextNote === currentNote && availableNotes.length > 1);
+            
+            currentNote = nextNote;
+            const note = new StaveNote({ clef: "bass", keys: [currentNote.key], duration: "q" });
+            const voice = new Voice({ num_beats: 1, beat_value: 4 });
+            voice.addTickables([note]);
+            new Formatter().joinVoices([voice]).format([voice], 150);
+            voice.draw(context, stave);
+        }
+
+        function checkAnswer(name) {
+            const feedbackDiv = document.getElementById("feedback");
+            clearTimeout(feedbackTimeout); // Limpiar temporizadores anteriores
+
+            if (name === currentNote.correct) {
+                hits++;
+                document.getElementById("score").innerText = `Racha: ${hits}`;
+                feedbackDiv.style.color = "var(--success)";
+                feedbackDiv.innerText = "¡Correcto!";
+                feedbackDiv.style.opacity = "1";
+                
+                // CAMBIO INSTANTÁNEO DE NOTA
+                generateNote();
+
+                // El mensaje desaparece solo después de un momento, sin frenar el juego
+                feedbackTimeout = setTimeout(() => { feedbackDiv.style.opacity = "0"; }, 600);
+            } else {
+                hits = 0;
+                document.getElementById("score").innerText = `Racha: 0`;
+                feedbackDiv.style.color = "var(--error)";
+                feedbackDiv.innerText = `¡No! Era ${currentNote.correct.toUpperCase()}`;
+                feedbackDiv.style.opacity = "1";
+            }
+        }
+
+        initLevels();
+        setLevel(0);
+    </script>
+</body>
+</html>
