@@ -45,7 +45,7 @@
             margin: 15px 0; padding: 15px;
         }
         #config-canvas-container { 
-            background: white; border-radius: 8px; min-height: 280px; border: 1px solid #eee;
+            background: white; border-radius: 8px; min-height: 300px; border: 1px solid #eee;
         }
         .range-controls {
             display: flex; justify-content: space-around; margin-top: 15px;
@@ -86,7 +86,7 @@
 
         <div id="custom-config-panel">
             <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 10px; color: var(--primary);">
-                Ajusta el rango (mínimo izquierda, máximo derecha)
+                Ajusta el rango con los botones + y -
             </div>
             <div id="config-canvas-container"></div>
             
@@ -129,7 +129,7 @@
         const noteNames = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
         const keyToToneIndex = { "c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11 };
         
-        // Rango de notas ampliado y verificado
+        // Array masivo que cubre desde pedales hasta notas sobreagudas extremas
         const baseNotes = [
             "c/1","d/1","e/1","f/1","g/1","a/1","b/1",
             "c/2","d/2","e/2","f/2","g/2","a/2","b/2",
@@ -137,13 +137,19 @@
             "c/4","d/4","e/4","f/4","g/4","a/4","b/4",
             "c/5","d/5","e/5","f/5","g/5","a/5","b/5",
             "c/6","d/6","e/6","f/6","g/6","a/6","b/6",
-            "c/7"
+            "c/7","d/7","e/7","f/7","g/7"
         ];
-        const clefGeometricCenters = { "treble": 27, "bass": 15, "alto": 21 };
+
+        // Centros geométricos ajustados para que la clave de sol empiece en una octava alta
+        const clefCenters = { 
+            "treble": 28, // Empieza en c/5 (Do central en Clave de Sol Sib)
+            "bass": 14,   // Empieza en c/3
+            "alto": 21    // Empieza en c/4
+        };
 
         let currentClef = "treble", currentLevelIdx = 0, currentNoteKey = "", currentCorrectAnswer = "";
-        let hits = 0, feedbackTimeout = null;
-        let isCustomMode = false, customIndices = [24, 30];
+        let hits = 0, feedbackTimeout = null, isCustomMode = false;
+        let customIndices = [28, 32]; // Rango inicial por defecto para Custom
 
         function initLevels() {
             const container = document.getElementById('lvl-picker');
@@ -173,7 +179,7 @@
             currentClef = c;
             document.querySelectorAll('.clef-btn').forEach(b => b.classList.remove('active'));
             el.classList.add('active');
-            const center = clefGeometricCenters[c];
+            const center = clefCenters[c];
             customIndices = [center - 2, center + 2];
             setLevel(0, true);
         }
@@ -185,6 +191,7 @@
 
         function adjustRange(idx, delta) {
             let newVal = customIndices[idx] + delta;
+            // Evitar que el índice se salga del array baseNotes
             if (newVal >= 0 && newVal < baseNotes.length) {
                 customIndices[idx] = newVal;
                 drawConfigStave();
@@ -195,16 +202,16 @@
             const div = document.getElementById("config-canvas-container");
             div.innerHTML = "";
             const renderer = new Renderer(div, Renderer.Backends.SVG);
-            renderer.resize(300, 280);
+            renderer.resize(300, 300);
             const ctx = renderer.getContext();
-            const stave = new Stave(10, 100, 260);
+            // Centramos el pentagrama verticalmente para dejar espacio arriba y abajo
+            const stave = new Stave(10, 110, 260);
             stave.addClef(currentClef).setContext(ctx).draw();
 
-            const notes = customIndices.map(idx => {
-                const sn = new StaveNote({ clef: currentClef, keys: [baseNotes[idx]], duration: "q" });
-                // Forzamos líneas adicionales si es necesario
-                return sn;
-            });
+            const notes = [
+                new StaveNote({ clef: currentClef, keys: [baseNotes[customIndices[0]]], duration: "q" }),
+                new StaveNote({ clef: currentClef, keys: [baseNotes[customIndices[1]]], duration: "q" })
+            ];
 
             const voice = new Voice({ num_beats: 2, beat_value: 4 }).addTickables(notes);
             new Formatter().joinVoices([voice]).format([voice], 180);
@@ -224,14 +231,16 @@
         function generateNote() {
             const div = document.getElementById("boo"); div.innerHTML = "";
             const renderer = new Renderer(div, Renderer.Backends.SVG);
-            renderer.resize(320, 200); const ctx = renderer.getContext(); ctx.scale(1.1, 1.1);
-            const stave = new Stave(10, 40, 280); stave.addClef(currentClef).setContext(ctx).draw();
+            renderer.resize(320, 220); 
+            const ctx = renderer.getContext();
+            const stave = new Stave(10, 60, 280); 
+            stave.addClef(currentClef).setContext(ctx).draw();
             
             let available;
             if (isCustomMode) {
                 available = baseNotes.slice(customIndices[0], customIndices[1] + 1);
             } else {
-                const center = clefGeometricCenters[currentClef]; 
+                const center = clefCenters[currentClef]; 
                 const span = currentLevelIdx + 1;
                 available = baseNotes.slice(Math.max(0, center - span), Math.min(baseNotes.length - 1, center + span) + 1);
             }
@@ -255,7 +264,7 @@
             if (n === currentCorrectAnswer) {
                 hits++;
                 if (isCustomMode && hits === 20) {
-                    f.style.color = "var(--accent)"; f.innerText = "¡Enhorabuena! Rango dominado.";
+                    f.style.color = "var(--accent)"; f.innerText = "¡Rango dominado! Sigue así.";
                     generateNote();
                 } else if (!isCustomMode && hits >= 20 && currentLevelIdx < 9) { 
                     f.style.color = "var(--accent)"; f.innerText = "¡NIVEL SUPERADO!"; setLevel(currentLevelIdx + 1, false);
