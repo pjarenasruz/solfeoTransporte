@@ -36,7 +36,7 @@
         }
         .clef-btn { width: 48px; height: 48px; padding: 0; border-radius: 12px; font-size: 1.8rem; }
         
-        .clef-btn.active, .current-level, #custom-range-toggle.active-mode { 
+        .active, .current-level, #custom-range-toggle.active-mode { 
             background: var(--accent) !important; color: white !important; transform: scale(1.03);
         }
         
@@ -44,12 +44,9 @@
             display: none; background: #f9fbff; border: 2px solid var(--accent); border-radius: 15px;
             margin: 15px 0; padding: 15px;
         }
-        #config-canvas-container { 
-            background: white; border-radius: 8px; min-height: 300px; border: 1px solid #eee;
-        }
-        .range-controls {
-            display: flex; justify-content: space-around; margin-top: 15px;
-        }
+        #config-canvas-container { background: white; border-radius: 8px; min-height: 280px; border: 1px solid #eee; }
+        
+        .range-controls { display: flex; justify-content: space-around; margin-top: 15px; }
         .control-group { display: flex; flex-direction: column; gap: 8px; align-items: center; }
         .step-btn {
             width: 55px; height: 55px; border-radius: 50%; border: none;
@@ -70,6 +67,12 @@
 <body>
 
     <div class="container">
+        <div class="selector-label">Transporte</div>
+        <div class="horizontal-selector">
+            <button id="trans-do" class="pill-btn active" onclick="setTransport(0, this)">Sonido Real (Do)</button>
+            <button id="trans-sib" class="pill-btn" onclick="setTransport(2, this)">Bombardino Sib</button>
+        </div>
+
         <div class="selector-label">Clave</div>
         <div class="horizontal-selector">
             <button class="clef-btn active" onclick="setClef('treble', this)">𝄞</button>
@@ -89,7 +92,6 @@
                 Ajusta el rango con los botones + y -
             </div>
             <div id="config-canvas-container"></div>
-            
             <div class="range-controls">
                 <div class="control-group">
                     <span style="font-size: 0.7rem; font-weight: bold;">NOTA INICIAL</span>
@@ -102,7 +104,6 @@
                     <button class="step-btn" onclick="adjustRange(1, -1)">-</button>
                 </div>
             </div>
-
             <button class="pill-btn active" onclick="closeRangeConfig()" style="margin-top: 20px; width: 100%; height: 45px; background: var(--success) !important; color: white;">
                 CONFIRMAR RANGO
             </button>
@@ -129,27 +130,17 @@
         const noteNames = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
         const keyToToneIndex = { "c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11 };
         
-        // Array masivo que cubre desde pedales hasta notas sobreagudas extremas
         const baseNotes = [
-            "c/1","d/1","e/1","f/1","g/1","a/1","b/1",
-            "c/2","d/2","e/2","f/2","g/2","a/2","b/2",
-            "c/3","d/3","e/3","f/3","g/3","a/3","b/3",
-            "c/4","d/4","e/4","f/4","g/4","a/4","b/4",
-            "c/5","d/5","e/5","f/5","g/5","a/5","b/5",
-            "c/6","d/6","e/6","f/6","g/6","a/6","b/6",
-            "c/7","d/7","e/7","f/7","g/7"
+            "c/1","d/1","e/1","f/1","g/1","a/1","b/1","c/2","d/2","e/2","f/2","g/2","a/2","b/2",
+            "c/3","d/3","e/3","f/3","g/3","a/3","b/3","c/4","d/4","e/4","f/4","g/4","a/4","b/4",
+            "c/5","d/5","e/5","f/5","g/5","a/5","b/5","c/6","d/6","e/6","f/6","g/6","a/6","b/6","c/7"
         ];
 
-        // Centros geométricos ajustados para que la clave de sol empiece en una octava alta
-        const clefCenters = { 
-            "treble": 28, // Empieza en c/5 (Do central en Clave de Sol Sib)
-            "bass": 14,   // Empieza en c/3
-            "alto": 21    // Empieza en c/4
-        };
+        const clefCenters = { "treble": 28, "bass": 14, "alto": 21 };
 
         let currentClef = "treble", currentLevelIdx = 0, currentNoteKey = "", currentCorrectAnswer = "";
         let hits = 0, feedbackTimeout = null, isCustomMode = false;
-        let customIndices = [28, 32]; // Rango inicial por defecto para Custom
+        let customIndices = [28, 32], transportSemitones = 0;
 
         function initLevels() {
             const container = document.getElementById('lvl-picker');
@@ -162,6 +153,13 @@
                 btn.onclick = () => setLevel(i-1, true);
                 container.appendChild(btn);
             }
+        }
+
+        function setTransport(semitones, el) {
+            transportSemitones = semitones;
+            document.querySelectorAll('[id^="trans-"]').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            generateNote();
         }
 
         function setLevel(idx, reset) {
@@ -191,7 +189,6 @@
 
         function adjustRange(idx, delta) {
             let newVal = customIndices[idx] + delta;
-            // Evitar que el índice se salga del array baseNotes
             if (newVal >= 0 && newVal < baseNotes.length) {
                 customIndices[idx] = newVal;
                 drawConfigStave();
@@ -202,17 +199,14 @@
             const div = document.getElementById("config-canvas-container");
             div.innerHTML = "";
             const renderer = new Renderer(div, Renderer.Backends.SVG);
-            renderer.resize(300, 300);
+            renderer.resize(300, 280);
             const ctx = renderer.getContext();
-            // Centramos el pentagrama verticalmente para dejar espacio arriba y abajo
-            const stave = new Stave(10, 110, 260);
+            const stave = new Stave(10, 100, 260);
             stave.addClef(currentClef).setContext(ctx).draw();
-
             const notes = [
                 new StaveNote({ clef: currentClef, keys: [baseNotes[customIndices[0]]], duration: "q" }),
                 new StaveNote({ clef: currentClef, keys: [baseNotes[customIndices[1]]], duration: "q" })
             ];
-
             const voice = new Voice({ num_beats: 2, beat_value: 4 }).addTickables(notes);
             new Formatter().joinVoices([voice]).format([voice], 180);
             voice.draw(ctx, stave);
@@ -238,47 +232,4 @@
             
             let available;
             if (isCustomMode) {
-                available = baseNotes.slice(customIndices[0], customIndices[1] + 1);
-            } else {
-                const center = clefCenters[currentClef]; 
-                const span = currentLevelIdx + 1;
-                available = baseNotes.slice(Math.max(0, center - span), Math.min(baseNotes.length - 1, center + span) + 1);
-            }
-
-            let nK; 
-            do { nK = available[Math.floor(Math.random()*available.length)]; } while (nK === currentNoteKey && available.length > 1);
-            currentNoteKey = nK;
-            
-            let bL = nK.split('/')[0]; 
-            currentCorrectAnswer = noteNames[keyToToneIndex[bL]].replace('#', '');
-
-            const note = new StaveNote({ clef: currentClef, keys: [nK], duration: "q" });
-            const voice = new Voice({ num_beats: 1, beat_value: 4 }).addTickables([note]);
-            new Formatter().joinVoices([voice]).format([voice], 150); 
-            voice.draw(ctx, stave);
-            document.getElementById('score-display').innerText = `Racha: ${hits}`;
-        }
-
-        function checkAnswer(n) {
-            const f = document.getElementById("feedback"); clearTimeout(feedbackTimeout);
-            if (n === currentCorrectAnswer) {
-                hits++;
-                if (isCustomMode && hits === 20) {
-                    f.style.color = "var(--accent)"; f.innerText = "¡Rango dominado! Sigue así.";
-                    generateNote();
-                } else if (!isCustomMode && hits >= 20 && currentLevelIdx < 9) { 
-                    f.style.color = "var(--accent)"; f.innerText = "¡NIVEL SUPERADO!"; setLevel(currentLevelIdx + 1, false);
-                } else { 
-                    f.style.color = "var(--success)"; f.innerText = "¡Correcto!"; generateNote(); 
-                }
-            } else { 
-                hits = 0; f.style.color = "var(--error)"; f.innerText = `Error: era ${currentCorrectAnswer.toUpperCase()}`; generateNote(); 
-            }
-            f.style.opacity = "1"; feedbackTimeout = setTimeout(() => f.style.opacity = "0", 2500);
-        }
-
-        initLevels();
-        setLevel(0, true);
-    </script>
-</body>
-</html>
+                available = baseNotes.slice(customIndices[0], customIndices[1] +
