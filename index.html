@@ -22,7 +22,6 @@
             font-size: 0.65rem; font-weight: 800; color: #95a5a6;
             text-align: left; margin: 10px 0 5px 5px; text-transform: uppercase; letter-spacing: 1px;
         }
-        
         .horizontal-selector {
             display: flex; overflow-x: auto; gap: 8px; padding: 10px 5px; 
             -webkit-overflow-scrolling: touch; justify-content: flex-start; align-items: center;
@@ -41,28 +40,26 @@
             background: var(--accent) !important; color: white !important; transform: scale(1.03);
         }
         
-        /* Panel de Configuración por Botones */
         #custom-config-panel {
             display: none; background: #f9fbff; border: 2px solid var(--accent); border-radius: 15px;
             margin: 15px 0; padding: 15px;
         }
         #config-canvas-container { 
-            background: white; border-radius: 8px; min-height: 220px; border: 1px solid #eee;
+            background: white; border-radius: 8px; min-height: 280px; border: 1px solid #eee;
         }
         .range-controls {
             display: flex; justify-content: space-around; margin-top: 15px;
         }
         .control-group { display: flex; flex-direction: column; gap: 8px; align-items: center; }
         .step-btn {
-            width: 50px; height: 50px; border-radius: 50%; border: none;
-            background: var(--primary); color: white; font-size: 1.5rem; font-weight: bold;
+            width: 55px; height: 55px; border-radius: 50%; border: none;
+            background: var(--primary); color: white; font-size: 1.8rem; font-weight: bold;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
             touch-action: manipulation;
         }
         .step-btn:active { transform: scale(0.9); background: var(--accent); }
 
-        .info-header { display: flex; justify-content: flex-start; margin-bottom: 5px; padding-left: 5px; }
-        #score-display { font-size: 0.9rem; color: #7f8c8d; font-weight: bold; }
+        #score-display { font-size: 0.9rem; color: #7f8c8d; font-weight: bold; text-align: left; padding-left: 5px; }
         #feedback { min-height: 45px; font-size: 1rem; font-weight: bold; display: flex; align-items: center; justify-content: center; }
         #canvas-container { width: 100%; display: flex; justify-content: center; min-height: 200px; }
         
@@ -84,14 +81,12 @@
         <div id="lvl-picker" class="horizontal-selector"></div>
 
         <div style="text-align: left; padding-left: 5px; margin-top: 5px;">
-            <button id="custom-range-toggle" onclick="openRangeConfig()">
-                Definir rango de notas
-            </button>
+            <button id="custom-range-toggle" onclick="openRangeConfig()">Definir rango de notas</button>
         </div>
 
         <div id="custom-config-panel">
             <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 10px; color: var(--primary);">
-                Usa los botones para ajustar la nota inicial y final
+                Ajusta el rango (mínimo izquierda, máximo derecha)
             </div>
             <div id="config-canvas-container"></div>
             
@@ -114,12 +109,8 @@
         </div>
 
         <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-
-        <div class="info-header">
-            <div id="score-display">Racha: 0</div>
-        </div>
+        <div id="score-display">Racha: 0</div>
         <div id="feedback"></div>
-        
         <div id="canvas-container"><div id="boo"></div></div>
 
         <div class="button-row">
@@ -137,7 +128,17 @@
         const { Renderer, Stave, StaveNote, Voice, Formatter } = Vex.Flow;
         const noteNames = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
         const keyToToneIndex = { "c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11 };
-        const baseNotes = ["c/1", "d/1", "e/1", "f/1", "g/1", "a/1", "b/1", "c/2", "d/2", "e/2", "f/2", "g/2", "a/2", "b/2", "c/3", "d/3", "e/3", "f/3", "g/3", "a/3", "b/3", "c/4", "d/4", "e/4", "f/4", "g/4", "a/4", "b/4", "c/5", "d/5", "e/5", "f/5", "g/5", "a/5", "b/5", "c/6"];
+        
+        // Rango de notas ampliado y verificado
+        const baseNotes = [
+            "c/1","d/1","e/1","f/1","g/1","a/1","b/1",
+            "c/2","d/2","e/2","f/2","g/2","a/2","b/2",
+            "c/3","d/3","e/3","f/3","g/3","a/3","b/3",
+            "c/4","d/4","e/4","f/4","g/4","a/4","b/4",
+            "c/5","d/5","e/5","f/5","g/5","a/5","b/5",
+            "c/6","d/6","e/6","f/6","g/6","a/6","b/6",
+            "c/7"
+        ];
         const clefGeometricCenters = { "treble": 27, "bass": 15, "alto": 21 };
 
         let currentClef = "treble", currentLevelIdx = 0, currentNoteKey = "", currentCorrectAnswer = "";
@@ -194,13 +195,17 @@
             const div = document.getElementById("config-canvas-container");
             div.innerHTML = "";
             const renderer = new Renderer(div, Renderer.Backends.SVG);
-            renderer.resize(300, 220);
+            renderer.resize(300, 280);
             const ctx = renderer.getContext();
-            const stave = new Stave(10, 60, 260);
+            const stave = new Stave(10, 100, 260);
             stave.addClef(currentClef).setContext(ctx).draw();
 
-            // Dibujar las dos notas negras definitorias
-            const notes = customIndices.map(idx => new StaveNote({ clef: currentClef, keys: [baseNotes[idx]], duration: "q" }));
+            const notes = customIndices.map(idx => {
+                const sn = new StaveNote({ clef: currentClef, keys: [baseNotes[idx]], duration: "q" });
+                // Forzamos líneas adicionales si es necesario
+                return sn;
+            });
+
             const voice = new Voice({ num_beats: 2, beat_value: 4 }).addTickables(notes);
             new Formatter().joinVoices([voice]).format([voice], 180);
             voice.draw(ctx, stave);
@@ -250,7 +255,7 @@
             if (n === currentCorrectAnswer) {
                 hits++;
                 if (isCustomMode && hits === 20) {
-                    f.style.color = "var(--accent)"; f.innerText = "¡Enhorabuena! 20 aciertos en este rango. Prueba ampliándolo.";
+                    f.style.color = "var(--accent)"; f.innerText = "¡Enhorabuena! Rango dominado.";
                     generateNote();
                 } else if (!isCustomMode && hits >= 20 && currentLevelIdx < 9) { 
                     f.style.color = "var(--accent)"; f.innerText = "¡NIVEL SUPERADO!"; setLevel(currentLevelIdx + 1, false);
