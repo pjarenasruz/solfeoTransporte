@@ -12,7 +12,6 @@
         body { 
             font-family: system-ui, -apple-system, sans-serif; 
             text-align: center; background: var(--bg); margin: 0; padding: 10px;
-            touch-action: none; 
         }
         .container {
             max-width: 600px; margin: 0 auto; background: white; 
@@ -24,15 +23,12 @@
             text-align: left; margin: 10px 0 5px 5px; text-transform: uppercase; letter-spacing: 1px;
         }
         
-        /* Navegación de niveles fluida */
         .horizontal-selector {
             display: flex; overflow-x: auto; gap: 8px; padding: 10px 5px; 
-            -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
-            justify-content: flex-start; align-items: center;
+            -webkit-overflow-scrolling: touch; justify-content: flex-start; align-items: center;
         }
-        .horizontal-selector::-webkit-scrollbar { display: none; } /* Ocultar barra para estética limpia */
+        .horizontal-selector::-webkit-scrollbar { display: none; }
         
-        /* Estilo UNIFICADO para todos los botones de control */
         .clef-btn, .pill-btn, #custom-range-toggle {
             background: #f0f3f6; border: none; cursor: pointer; transition: all 0.2s; 
             color: var(--primary); font-weight: bold; white-space: nowrap; flex-shrink: 0;
@@ -41,29 +37,33 @@
         }
         .clef-btn { width: 48px; height: 48px; padding: 0; border-radius: 12px; font-size: 1.8rem; }
         
-        /* ESTADO ACTIVO: Siempre azul para todo */
-        .clef-btn.active, .pill-btn.active, .current-level, #custom-range-toggle.active-mode { 
-            background: var(--accent) !important; 
-            color: white !important; 
-            transform: scale(1.03);
-            border: none;
+        .clef-btn.active, .current-level, #custom-range-toggle.active-mode { 
+            background: var(--accent) !important; color: white !important; transform: scale(1.03);
         }
         
-        /* Panel de Configuración */
+        /* Panel de Configuración por Botones */
         #custom-config-panel {
             display: none; background: #f9fbff; border: 2px solid var(--accent); border-radius: 15px;
-            margin: 15px 0; padding: 15px; touch-action: none;
+            margin: 15px 0; padding: 15px;
         }
         #config-canvas-container { 
-            cursor: ns-resize; background: white; border-radius: 8px; 
-            min-height: 260px; touch-action: none; user-select: none;
-            border: 1px solid #eee;
+            background: white; border-radius: 8px; min-height: 220px; border: 1px solid #eee;
         }
+        .range-controls {
+            display: flex; justify-content: space-around; margin-top: 15px;
+        }
+        .control-group { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+        .step-btn {
+            width: 50px; height: 50px; border-radius: 50%; border: none;
+            background: var(--primary); color: white; font-size: 1.5rem; font-weight: bold;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            touch-action: manipulation;
+        }
+        .step-btn:active { transform: scale(0.9); background: var(--accent); }
 
         .info-header { display: flex; justify-content: flex-start; margin-bottom: 5px; padding-left: 5px; }
         #score-display { font-size: 0.9rem; color: #7f8c8d; font-weight: bold; }
         #feedback { min-height: 45px; font-size: 1rem; font-weight: bold; display: flex; align-items: center; justify-content: center; }
-        
         #canvas-container { width: 100%; display: flex; justify-content: center; min-height: 200px; }
         
         .button-row { display: flex; justify-content: space-between; gap: 5px; margin-top: 15px; touch-action: manipulation; }
@@ -81,8 +81,7 @@
         </div>
 
         <div class="selector-label">Niveles</div>
-        <div id="lvl-picker" class="horizontal-selector">
-            </div>
+        <div id="lvl-picker" class="horizontal-selector"></div>
 
         <div style="text-align: left; padding-left: 5px; margin-top: 5px;">
             <button id="custom-range-toggle" onclick="openRangeConfig()">
@@ -92,10 +91,24 @@
 
         <div id="custom-config-panel">
             <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 10px; color: var(--primary);">
-                Entrena el rango de notas entre la roja y la azul
+                Usa los botones para ajustar la nota inicial y final
             </div>
             <div id="config-canvas-container"></div>
-            <button class="pill-btn active" onclick="closeRangeConfig()" style="margin-top: 15px; width: 100%; height: 45px; background: var(--success) !important;">
+            
+            <div class="range-controls">
+                <div class="control-group">
+                    <span style="font-size: 0.7rem; font-weight: bold;">NOTA INICIAL</span>
+                    <button class="step-btn" onclick="adjustRange(0, 1)">+</button>
+                    <button class="step-btn" onclick="adjustRange(0, -1)">-</button>
+                </div>
+                <div class="control-group">
+                    <span style="font-size: 0.7rem; font-weight: bold;">NOTA FINAL</span>
+                    <button class="step-btn" onclick="adjustRange(1, 1)">+</button>
+                    <button class="step-btn" onclick="adjustRange(1, -1)">-</button>
+                </div>
+            </div>
+
+            <button class="pill-btn active" onclick="closeRangeConfig()" style="margin-top: 20px; width: 100%; height: 45px; background: var(--success) !important; color: white;">
                 CONFIRMAR RANGO
             </button>
         </div>
@@ -129,7 +142,7 @@
 
         let currentClef = "treble", currentLevelIdx = 0, currentNoteKey = "", currentCorrectAnswer = "";
         let hits = 0, feedbackTimeout = null;
-        let isCustomMode = false, customIndices = [24, 30], isDraggingIdx = -1;
+        let isCustomMode = false, customIndices = [24, 30];
 
         function initLevels() {
             const container = document.getElementById('lvl-picker');
@@ -148,13 +161,10 @@
             isCustomMode = false;
             currentLevelIdx = idx;
             if (reset) hits = 0;
-            
             document.getElementById('custom-range-toggle').classList.remove('active-mode');
             document.querySelectorAll('#lvl-picker .pill-btn').forEach(b => b.classList.remove('current-level'));
-            
             const activeBtn = document.getElementById("btn-lvl-" + idx);
             if (activeBtn) activeBtn.classList.add('current-level');
-            
             generateNote();
         }
 
@@ -163,7 +173,7 @@
             document.querySelectorAll('.clef-btn').forEach(b => b.classList.remove('active'));
             el.classList.add('active');
             const center = clefGeometricCenters[c];
-            customIndices = [center - 3, center + 3];
+            customIndices = [center - 2, center + 2];
             setLevel(0, true);
         }
 
@@ -172,58 +182,32 @@
             drawConfigStave();
         }
 
+        function adjustRange(idx, delta) {
+            let newVal = customIndices[idx] + delta;
+            if (newVal >= 0 && newVal < baseNotes.length) {
+                customIndices[idx] = newVal;
+                drawConfigStave();
+            }
+        }
+
         function drawConfigStave() {
             const div = document.getElementById("config-canvas-container");
             div.innerHTML = "";
             const renderer = new Renderer(div, Renderer.Backends.SVG);
-            renderer.resize(300, 260);
+            renderer.resize(300, 220);
             const ctx = renderer.getContext();
-            const stave = new Stave(10, 80, 260);
+            const stave = new Stave(10, 60, 260);
             stave.addClef(currentClef).setContext(ctx).draw();
 
-            customIndices.forEach((idx, i) => {
-                const sn = new StaveNote({ clef: currentClef, keys: [baseNotes[idx]], duration: "q" });
-                sn.setStyle({ fillStyle: i === 0 ? "red" : "blue", strokeStyle: i === 0 ? "red" : "blue" });
-                const voice = new Voice({ num_beats: 1, beat_value: 4 }).addTickables([sn]);
-                new Formatter().joinVoices([voice]).format([voice], 100);
-                voice.draw(ctx, stave);
-            });
-
-            const getNoteFromY = (clientY) => {
-                const rect = div.getBoundingClientRect();
-                const y = clientY - rect.top;
-                const centerIdx = clefGeometricCenters[currentClef];
-                const offset = Math.round((130 - y) / 5.5);
-                return Math.min(Math.max(centerIdx + offset, 0), baseNotes.length - 1);
-            };
-
-            const handleMove = (e) => {
-                if (isDraggingIdx === -1) return;
-                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                customIndices[isDraggingIdx] = getNoteFromY(clientY);
-                drawConfigStave();
-            };
-
-            div.onmousedown = (e) => {
-                const clickedIdx = getNoteFromY(e.clientY);
-                isDraggingIdx = Math.abs(clickedIdx - customIndices[0]) < Math.abs(clickedIdx - customIndices[1]) ? 0 : 1;
-            };
-
-            div.ontouchstart = (e) => {
-                const clickedIdx = getNoteFromY(e.touches[0].clientY);
-                isDraggingIdx = Math.abs(clickedIdx - customIndices[0]) < Math.abs(clickedIdx - customIndices[1]) ? 0 : 1;
-                e.preventDefault();
-            };
-
-            window.onmousemove = handleMove;
-            window.ontouchmove = handleMove;
-            window.onmouseup = window.ontouchend = () => { 
-                isDraggingIdx = -1; 
-                customIndices.sort((a,b) => a - b);
-            };
+            // Dibujar las dos notas negras definitorias
+            const notes = customIndices.map(idx => new StaveNote({ clef: currentClef, keys: [baseNotes[idx]], duration: "q" }));
+            const voice = new Voice({ num_beats: 2, beat_value: 4 }).addTickables(notes);
+            new Formatter().joinVoices([voice]).format([voice], 180);
+            voice.draw(ctx, stave);
         }
 
         function closeRangeConfig() {
+            customIndices.sort((a,b) => a - b);
             isCustomMode = true;
             document.getElementById('custom-range-toggle').classList.add('active-mode');
             document.querySelectorAll('#lvl-picker .pill-btn').forEach(b => b.classList.remove('current-level'));
@@ -284,4 +268,3 @@
     </script>
 </body>
 </html>
-```
