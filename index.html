@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Solfeador Progresivo - Límite 3 Líneas</title>
+    <title>Solfeador - Límite Estricto 3 Líneas</title>
     <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
     <style>
         :root {
@@ -96,15 +96,14 @@
             "c/5","d/5","e/5","f/5","g/5","a/5","b/5","c/6","d/6","e/6","f/6","g/6","a/6","b/6"
         ];
 
-        // Centrales de cada clave para empezar Nivel 1
+        // Centrales de cada clave para empezar Nivel 1 (Tónica de la clave)
         const clefTonics = { "treble": 25, "bass": 17, "alto": 21 };
 
-        // LÍMITES ESTRICTOS (3 líneas adicionales máximo)
-        // En Treble: Do3 (3 inf) a Re6 (3 sup). 
+        // LÍMITES ESTRICTOS REDEFINIDOS (3 LÍNEAS REALES)
         const strictLimits = {
-            "treble": { min: 14, max: 42 }, // La2 (3 inf) a Re6 (3 sup)
-            "bass": { min: 3, max: 31 },   // Re1 a Mi4
-            "alto": { min: 9, max: 37 }    // Fa1 a Sol5
+            "treble": { min: 15, max: 42 }, // Mi/3 a Re/6 (Do/3 es 3ª inf, Re/6 es 3ª sup)
+            "bass": { min: 4, max: 30 },   // Mi/1 a Re/4 (Mi/1 es 3ª inf, Re/4 es 3ª sup)
+            "alto": { min: 11, max: 37 }   // Do/2 a Sol/5
         };
 
         let currentClef = "treble", currentLevelIdx = 0, currentNoteKey = "", currentCorrectAnswer = "";
@@ -143,9 +142,9 @@
             const tonic = clefTonics[currentClef];
             const limit = strictLimits[currentClef];
             
-            // PROGRESIÓN REAL: 
-            // Nivel 1 (idx 0): +/- 1 nota desde la tónica.
-            // Nivel 10 (idx 9): +/- 10 notas, o hasta chocar con el límite de 3 líneas.
+            // PROGRESIÓN DE NIVELES:
+            // Nivel 1: El rango es de 1 nota alrededor de la tónica.
+            // Niveles sucesivos: Se expande el rango hasta el límite máximo de 3 líneas.
             let range = currentLevelIdx + 1;
             let minIdx = Math.max(limit.min, tonic - range);
             let maxIdx = Math.min(limit.max, tonic + range);
