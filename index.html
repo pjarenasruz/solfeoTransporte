@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Solfeador - Límite Estricto 3 Líneas</title>
+    <title>Solfeador - Límite Real 3 Líneas</title>
     <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
     <style>
         :root {
@@ -90,22 +90,21 @@
         const noteNames = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
         const keyToToneIndex = { "c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11 };
         
-        // Array de notas completo
         const baseNotes = [
             "c/1","d/1","e/1","f/1","g/1","a/1","b/1","c/2","d/2","e/2","f/2","g/2","a/2","b/2",
             "c/3","d/3","e/3","f/3","g/3","a/3","b/3","c/4","d/4","e/4","f/4","g/4","a/4","b/4",
-            "c/5","d/5","e/5","f/5","g/5","a/5","b/5","c/6","d/6","e/6","f/6","g/6","a/6","b/6","c/7"
+            "c/5","d/5","e/5","f/5","g/5","a/5","b/5","c/6","d/6","e/6","f/6","g/6","a/6","b/6"
         ];
 
-        // Tónicas por clave
         const clefTonics = { "treble": 25, "bass": 17, "alto": 21 };
 
-        // LÍMITES MATEMÁTICOS PARA NO SUPERAR LAS 3 LÍNEAS VISUALES
-        // En Sol: Mi/3 es la nota sobre la 3ª línea adicional inferior. Re/6 es la nota sobre la 3ª línea adicional superior.
-        const physicalLimits = {
-            "treble": { min: 15, max: 42 }, // Mi/3 a Re/6
-            "bass": { min: 7, max: 32 },   // Sol/1 a Fa/4
-            "alto": { min: 12, max: 37 }   // La/1 a Sol/5
+        // LÍMITES ESTRICTOS PARA EVITAR QUE APAREZCA LA 4ª LÍNEA
+        // En Sol: Do/3 es la 3ª línea abajo. Re/6 es la 3ª línea arriba. 
+        // Si ponemos Mi/6, VexFlow dibuja la 4ª línea para que la nota "repose" sobre ella.
+        const strictLimits = {
+            "treble": { min: 16, max: 42 }, // Re/3 a Re/6
+            "bass": { min: 4, max: 30 },   // Mi/1 a Fa/4
+            "alto": { min: 10, max: 35 }   // Sol/1 a Sol/5
         };
 
         let currentClef = "treble", currentLevelIdx = 0, currentNoteKey = "", currentCorrectAnswer = "";
@@ -142,24 +141,16 @@
             const stave = new Stave(10, 80, 280); stave.addClef(currentClef).setContext(ctx).draw();
 
             const tonic = clefTonics[currentClef];
-            const limit = physicalLimits[currentClef];
+            const limit = strictLimits[currentClef];
             
-            // Crecimiento simétrico desde la tónica
+            // Rango progresivo
             let span = currentLevelIdx + 2; 
-            let minIdx = tonic - span;
-            let maxIdx = tonic + span;
+            let minIdx = Math.max(limit.min, tonic - span);
+            let maxIdx = Math.min(limit.max, tonic + span);
 
-            // Bloqueo en límites y redistribución del rango
-            if (minIdx < limit.min) {
-                let diff = limit.min - minIdx;
-                minIdx = limit.min;
-                maxIdx = Math.min(maxIdx + diff, limit.max);
-            }
-            if (maxIdx > limit.max) {
-                let diff = maxIdx - limit.max;
-                maxIdx = limit.max;
-                minIdx = Math.max(minIdx - diff, limit.min);
-            }
+            // Si un lado llega al límite, expandimos hacia el otro para mantener dificultad
+            if (minIdx === limit.min) maxIdx = Math.min(limit.max, tonic + (span * 2 - (tonic - minIdx)));
+            if (maxIdx === limit.max) minIdx = Math.max(limit.min, tonic - (span * 2 - (maxIdx - tonic)));
 
             const available = baseNotes.slice(minIdx, maxIdx + 1);
             let nK; do { nK = available[Math.floor(Math.random()*available.length)]; } 
