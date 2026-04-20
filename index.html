@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Solfeador - Límite Real 3 Líneas</title>
+    <title>Solfeador Progresivo - Límite 3 Líneas</title>
     <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
     <style>
         :root {
@@ -96,15 +96,15 @@
             "c/5","d/5","e/5","f/5","g/5","a/5","b/5","c/6","d/6","e/6","f/6","g/6","a/6","b/6"
         ];
 
+        // Centrales de cada clave para empezar Nivel 1
         const clefTonics = { "treble": 25, "bass": 17, "alto": 21 };
 
-        // LÍMITES ESTRICTOS PARA EVITAR QUE APAREZCA LA 4ª LÍNEA
-        // En Sol: Do/3 es la 3ª línea abajo. Re/6 es la 3ª línea arriba. 
-        // Si ponemos Mi/6, VexFlow dibuja la 4ª línea para que la nota "repose" sobre ella.
+        // LÍMITES ESTRICTOS (3 líneas adicionales máximo)
+        // En Treble: Do3 (3 inf) a Re6 (3 sup). 
         const strictLimits = {
-            "treble": { min: 16, max: 42 }, // Re/3 a Re/6
-            "bass": { min: 4, max: 30 },   // Mi/1 a Fa/4
-            "alto": { min: 10, max: 35 }   // Sol/1 a Sol/5
+            "treble": { min: 14, max: 42 }, // La2 (3 inf) a Re6 (3 sup)
+            "bass": { min: 3, max: 31 },   // Re1 a Mi4
+            "alto": { min: 9, max: 37 }    // Fa1 a Sol5
         };
 
         let currentClef = "treble", currentLevelIdx = 0, currentNoteKey = "", currentCorrectAnswer = "";
@@ -143,14 +143,12 @@
             const tonic = clefTonics[currentClef];
             const limit = strictLimits[currentClef];
             
-            // Rango progresivo
-            let span = currentLevelIdx + 2; 
-            let minIdx = Math.max(limit.min, tonic - span);
-            let maxIdx = Math.min(limit.max, tonic + span);
-
-            // Si un lado llega al límite, expandimos hacia el otro para mantener dificultad
-            if (minIdx === limit.min) maxIdx = Math.min(limit.max, tonic + (span * 2 - (tonic - minIdx)));
-            if (maxIdx === limit.max) minIdx = Math.max(limit.min, tonic - (span * 2 - (maxIdx - tonic)));
+            // PROGRESIÓN REAL: 
+            // Nivel 1 (idx 0): +/- 1 nota desde la tónica.
+            // Nivel 10 (idx 9): +/- 10 notas, o hasta chocar con el límite de 3 líneas.
+            let range = currentLevelIdx + 1;
+            let minIdx = Math.max(limit.min, tonic - range);
+            let maxIdx = Math.min(limit.max, tonic + range);
 
             const available = baseNotes.slice(minIdx, maxIdx + 1);
             let nK; do { nK = available[Math.floor(Math.random()*available.length)]; } 
