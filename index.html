@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Solfeador Pro - Límites Inteligentes</title>
+    <title>Solfeador - Tonalidad y Límites</title>
     <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
     <style>
         :root {
@@ -18,23 +18,6 @@
             max-width: 600px; margin: 0 auto; background: white; 
             border-radius: 20px; padding: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             position: relative; margin-top: 15px;
-        }
-        .help-btn {
-            position: absolute; top: -12px; right: 10px;
-            width: 32px; height: 32px; border-radius: 50%;
-            background: var(--primary); color: white; border: 2px solid white;
-            font-weight: bold; cursor: pointer; z-index: 100;
-            box-shadow: 0 3px 8px rgba(0,0,0,0.2);
-        }
-        .modal {
-            display: none; position: fixed; z-index: 200;
-            left: 0; top: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.6); backdrop-filter: blur(2px);
-        }
-        .modal-content {
-            background-color: white; margin: 15% auto; padding: 25px;
-            border-radius: 20px; width: 85%; max-width: 400px;
-            text-align: left; position: relative;
         }
         .selector-label {
             font-size: 0.65rem; font-weight: 800; color: #95a5a6;
@@ -61,7 +44,7 @@
         .transpose-wrapper { display: flex; align-items: center; gap: 15px; padding: 5px; }
         .trans-control { width: 35px; height: 35px; border-radius: 50%; border: none; background: #eee; font-size: 1.2rem; font-weight: bold; }
         #feedback { min-height: 30px; margin-bottom: -15px; font-size: 1.1rem; font-weight: bold; transition: opacity 0.2s; }
-        #canvas-container { width: 100%; display: flex; justify-content: center; min-height: 200px; }
+        #canvas-container { width: 100%; display: flex; justify-content: center; min-height: 250px; }
         .button-row { display: flex; justify-content: space-between; gap: 4px; margin-top: 5px; }
         button.note-btn { flex: 1; padding: 15px 0; font-size: 0.85rem; font-weight: bold; background: var(--primary); color: white; border: none; border-radius: 10px; }
         .info-bar { display: flex; justify-content: flex-start; font-size: 0.85rem; color: #7f8c8d; padding: 0 5px; }
@@ -70,17 +53,6 @@
 <body>
 
     <div class="container">
-        <button class="help-btn" onclick="toggleModal(true)">?</button>
-
-        <div id="helpModal" class="modal">
-            <div class="modal-content">
-                <span style="position:absolute; top:10px; right:15px; cursor:pointer; font-size:20px;" onclick="toggleModal(false)">&times;</span>
-                <h3 style="margin-top:0">Guía Rápida</h3>
-                <p style="font-size:0.9rem">El rango de notas se expande hasta un máximo de <strong>4 líneas adicionales</strong> por arriba o por abajo. Si se llega al límite en un lado, el nivel seguirá creciendo solo por el otro.</p>
-                <p style="font-size:0.7rem">© Pedro J. Arenas Ruz (2026)</p>
-            </div>
-        </div>
-
         <div class="selector-label">Clave</div>
         <div class="horizontal-selector">
             <button class="clef-btn active" onclick="setClef('treble', this)">𝄞</button>
@@ -118,9 +90,7 @@
         const noteNames = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
         const keyToToneIndex = { "c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11 };
         
-        // Ampliado baseNotes para asegurar que hay suficientes notas para 4 líneas adicionales en todas las claves
         const baseNotes = [
-            "f/0","g/0","a/0","b/0",
             "c/1","d/1","e/1","f/1","g/1","a/1","b/1",
             "c/2","d/2","e/2","f/2","g/2","a/2","b/2",
             "c/3","d/3","e/3","f/3","g/3","a/3","b/3",
@@ -129,21 +99,23 @@
             "c/6","d/6","e/6","f/6","g/6","a/6","b/6","c/7"
         ];
 
-        // Definimos los límites físicos de 4 líneas adicionales por clave
-        // Formato: [índice_nota_4_líneas_abajo, índice_nota_4_líneas_arriba]
-        const physicalLimits = {
-            "treble": { min: 21, max: 45 }, // La/3 a Sol/6
-            "bass": { min: 4, max: 28 },   // Do/1 a Si/3
-            "alto": { min: 14, max: 35 }   // Do/2 a Do/5
+        // Tonalidades de inicio (Nivel 1 empieza aquí)
+        const clefTonics = {
+            "treble": 25, // Sol/4
+            "bass": 17,   // Do/3
+            "alto": 21    // Do/4
         };
 
-        const clefCenters = { "treble": 32, "bass": 17, "alto": 25 };
+        // Límites absolutos de 4 líneas adicionales
+        const physicalLimits = {
+            "treble": { min: 14, max: 45 }, // La/2 (4 líneas abajo) a Sol/6 (4 líneas arriba)
+            "bass": { min: 4, max: 35 },   // Do/1 a Do/5
+            "alto": { min: 11, max: 42 }   // Do/2 a Do/6
+        };
 
         let currentClef = "treble", currentLevelIdx = 0, currentNoteKey = "", currentCorrectAnswer = "";
         let transposeSemiTones = 0, hits = 0, feedbackTimeout = null;
 
-        function toggleModal(s) { document.getElementById('helpModal').style.display = s ? 'block' : 'none'; }
-        
         function setClef(c, b) {
             currentClef = c;
             document.querySelectorAll('.clef-btn').forEach(el => el.classList.remove('active'));
@@ -170,32 +142,33 @@
         function generateNote() {
             const div = document.getElementById("boo"); div.innerHTML = "";
             const renderer = new Renderer(div, Renderer.Backends.SVG);
-            renderer.resize(320, 220); 
+            renderer.resize(320, 250); 
             const ctx = renderer.getContext(); ctx.scale(1.1, 1.1);
-            const stave = new Stave(10, 60, 280); stave.addClef(currentClef).setContext(ctx).draw();
+            
+            const stave = new Stave(10, 80, 280); 
+            stave.addClef(currentClef).setContext(ctx).draw();
 
-            const center = clefCenters[currentClef];
+            const tonic = clefTonics[currentClef];
             const limit = physicalLimits[currentClef];
             
-            // Lógica de expansión asimétrica con topes
-            let span = currentLevelIdx + 2; 
-            let minIdx = center - span;
-            let maxIdx = center + span;
+            // Crecimiento desde la tónica
+            let span = currentLevelIdx + 1; 
+            let minIdx = tonic - span;
+            let maxIdx = tonic + span;
 
-            // Si desborda por abajo, frenamos en el límite y dejamos que crezca por arriba (y viceversa)
+            // Aplicación de topes de 4 líneas
             if (minIdx < limit.min) {
-                let diff = limit.min - minIdx;
+                let overflow = limit.min - minIdx;
                 minIdx = limit.min;
-                maxIdx = Math.min(maxIdx + diff, limit.max);
+                maxIdx = Math.min(maxIdx + overflow, limit.max);
             }
             if (maxIdx > limit.max) {
-                let diff = maxIdx - limit.max;
+                let overflow = maxIdx - limit.max;
                 maxIdx = limit.max;
-                minIdx = Math.max(minIdx - diff, limit.min);
+                minIdx = Math.max(minIdx - overflow, limit.min);
             }
 
             const available = baseNotes.slice(minIdx, maxIdx + 1);
-            
             let nK; 
             do { nK = available[Math.floor(Math.random()*available.length)]; } 
             while (nK === currentNoteKey && available.length > 1);
