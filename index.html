@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Solfeador - Límite 3 Líneas</title>
+    <title>Solfeador - Límite Estricto 3 Líneas</title>
     <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
     <style>
         :root {
@@ -90,35 +90,22 @@
         const noteNames = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
         const keyToToneIndex = { "c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11 };
         
+        // Array de notas completo
         const baseNotes = [
-            "c/1","d/1","e/1","f/1","g/1","a/1","b/1",
-            "c/2","d/2","e/2","f/2","g/2","a/2","b/2",
-            "c/3","d/3","e/3","f/3","g/3","a/3","b/3",
-            "c/4","d/4","e/4","f/4","g/4","a/4","b/4",
-            "c/5","d/5","e/5","f/5","g/5","a/5","b/5",
-            "c/6","d/6","e/6","f/6","g/6","a/6","b/6","c/7"
+            "c/1","d/1","e/1","f/1","g/1","a/1","b/1","c/2","d/2","e/2","f/2","g/2","a/2","b/2",
+            "c/3","d/3","e/3","f/3","g/3","a/3","b/3","c/4","d/4","e/4","f/4","g/4","a/4","b/4",
+            "c/5","d/5","e/5","f/5","g/5","a/5","b/5","c/6","d/6","e/6","f/6","g/6","a/6","b/6","c/7"
         ];
 
-        const clefTonics = {
-            "treble": 25, // Sol/4
-            "bass": 17,   // Do/3
-            "alto": 21    // Do/4
-        };
+        // Tónicas por clave
+        const clefTonics = { "treble": 25, "bass": 17, "alto": 21 };
 
-        // LÍMITES ESTRICTOS (Evitan la 4ª línea adicional)
+        // LÍMITES MATEMÁTICOS PARA NO SUPERAR LAS 3 LÍNEAS VISUALES
+        // En Sol: Mi/3 es la nota sobre la 3ª línea adicional inferior. Re/6 es la nota sobre la 3ª línea adicional superior.
         const physicalLimits = {
-            "treble": { 
-                min: 17, // Mi/3 (3 líneas abajo es Do/3, debajo de eso ya pide 4ª línea)
-                max: 42  // Re/6 (Encima de Re/6, el Mi/6 ya dibuja la 4ª línea adicional)
-            },
-            "bass": { 
-                min: 7,  // Fa/1
-                max: 32  // Sol/4
-            },
-            "alto": { 
-                min: 12, // Sol/1
-                max: 37  // La/5
-            }
+            "treble": { min: 15, max: 42 }, // Mi/3 a Re/6
+            "bass": { min: 7, max: 32 },   // Sol/1 a Fa/4
+            "alto": { min: 12, max: 37 }   // La/1 a Sol/5
         };
 
         let currentClef = "treble", currentLevelIdx = 0, currentNoteKey = "", currentCorrectAnswer = "";
@@ -157,10 +144,12 @@
             const tonic = clefTonics[currentClef];
             const limit = physicalLimits[currentClef];
             
-            let span = currentLevelIdx + 3; 
+            // Crecimiento simétrico desde la tónica
+            let span = currentLevelIdx + 2; 
             let minIdx = tonic - span;
             let maxIdx = tonic + span;
 
+            // Bloqueo en límites y redistribución del rango
             if (minIdx < limit.min) {
                 let diff = limit.min - minIdx;
                 minIdx = limit.min;
