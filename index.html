@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Solfeador - Tonalidad y Límites</title>
+    <title>Solfeador - Tonalidad Equilibrada</title>
     <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
     <style>
         :root {
@@ -99,16 +99,16 @@
             "c/6","d/6","e/6","f/6","g/6","a/6","b/6","c/7"
         ];
 
-        // Tonalidades de inicio (Nivel 1 empieza aquí)
+        // Índices exactos corregidos para las tónicas en baseNotes
         const clefTonics = {
             "treble": 25, // Sol/4
             "bass": 17,   // Do/3
             "alto": 21    // Do/4
         };
 
-        // Límites absolutos de 4 líneas adicionales
+        // Límites de 4 líneas adicionales
         const physicalLimits = {
-            "treble": { min: 14, max: 45 }, // La/2 (4 líneas abajo) a Sol/6 (4 líneas arriba)
+            "treble": { min: 14, max: 45 }, // La/2 a Sol/6
             "bass": { min: 4, max: 35 },   // Do/1 a Do/5
             "alto": { min: 11, max: 42 }   // Do/2 a Do/6
         };
@@ -151,21 +151,21 @@
             const tonic = clefTonics[currentClef];
             const limit = physicalLimits[currentClef];
             
-            // Crecimiento desde la tónica
-            let span = currentLevelIdx + 1; 
+            // Ajustamos el span para que el Nivel 1 (idx 0) ya tenga un rango de +/- 3 notas
+            let span = currentLevelIdx + 3; 
             let minIdx = tonic - span;
             let maxIdx = tonic + span;
 
-            // Aplicación de topes de 4 líneas
+            // Lógica de topes
             if (minIdx < limit.min) {
-                let overflow = limit.min - minIdx;
+                let diff = limit.min - minIdx;
                 minIdx = limit.min;
-                maxIdx = Math.min(maxIdx + overflow, limit.max);
+                maxIdx = Math.min(maxIdx + diff, limit.max);
             }
             if (maxIdx > limit.max) {
-                let overflow = maxIdx - limit.max;
+                let diff = maxIdx - limit.max;
                 maxIdx = limit.max;
-                minIdx = Math.max(minIdx - overflow, limit.min);
+                minIdx = Math.max(minIdx - diff, limit.min);
             }
 
             const available = baseNotes.slice(minIdx, maxIdx + 1);
