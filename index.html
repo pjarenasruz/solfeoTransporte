@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Solfeador - Máximo 3 Líneas</title>
+    <title>Solfeador - Límite 3 Líneas</title>
     <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
     <style>
         :root {
@@ -105,19 +105,19 @@
             "alto": 21    // Do/4
         };
 
-        // LÍMITES AJUSTADOS A 3 LÍNEAS ADICIONALES
+        // LÍMITES ESTRICTOS (Evitan la 4ª línea adicional)
         const physicalLimits = {
             "treble": { 
-                min: 16, // Do/3 (Aprox 3 líneas abajo: La/2 es 4 líneas, Do/3 es 3 líneas)
-                max: 43  // Mi/6 (Aprox 3 líneas arriba)
+                min: 17, // Mi/3 (3 líneas abajo es Do/3, debajo de eso ya pide 4ª línea)
+                max: 42  // Re/6 (Encima de Re/6, el Mi/6 ya dibuja la 4ª línea adicional)
             },
             "bass": { 
-                min: 6,  // Mi/1
-                max: 33  // La/4
+                min: 7,  // Fa/1
+                max: 32  // Sol/4
             },
             "alto": { 
-                min: 13, // La/1
-                max: 40  // Sol/5
+                min: 12, // Sol/1
+                max: 37  // La/5
             }
         };
 
@@ -152,9 +152,7 @@
             const renderer = new Renderer(div, Renderer.Backends.SVG);
             renderer.resize(320, 250); 
             const ctx = renderer.getContext(); ctx.scale(1.1, 1.1);
-            
-            const stave = new Stave(10, 80, 280); 
-            stave.addClef(currentClef).setContext(ctx).draw();
+            const stave = new Stave(10, 80, 280); stave.addClef(currentClef).setContext(ctx).draw();
 
             const tonic = clefTonics[currentClef];
             const limit = physicalLimits[currentClef];
@@ -163,7 +161,6 @@
             let minIdx = tonic - span;
             let maxIdx = tonic + span;
 
-            // Lógica de topes corregida para 3 líneas
             if (minIdx < limit.min) {
                 let diff = limit.min - minIdx;
                 minIdx = limit.min;
@@ -176,13 +173,11 @@
             }
 
             const available = baseNotes.slice(minIdx, maxIdx + 1);
-            let nK; 
-            do { nK = available[Math.floor(Math.random()*available.length)]; } 
+            let nK; do { nK = available[Math.floor(Math.random()*available.length)]; } 
             while (nK === currentNoteKey && available.length > 1);
             
             currentNoteKey = nK;
-            let bL = nK.split('/')[0]; 
-            let bI = keyToToneIndex[bL];
+            let bL = nK.split('/')[0]; let bI = keyToToneIndex[bL];
             let tI = (bI + transposeSemiTones) % 12; if (tI < 0) tI += 12;
             currentCorrectAnswer = noteNames[tI].replace('#', '');
 
@@ -190,7 +185,6 @@
             const voice = new Voice({ num_beats: 1, beat_value: 4 }).addTickables([note]);
             new Formatter().joinVoices([voice]).format([voice], 150); 
             voice.draw(ctx, stave);
-            
             document.getElementById('score').innerText = `Racha: ${hits}`;
         }
 
@@ -198,30 +192,20 @@
             const f = document.getElementById("feedback"); clearTimeout(feedbackTimeout);
             if (n === currentCorrectAnswer) {
                 hits++;
-                if (hits >= 20 && currentLevelIdx < 9) { 
-                    f.style.color = "var(--accent)"; f.innerText = "¡NIVEL SUPERADO!"; 
-                    setLevel(currentLevelIdx + 1, false); hits = 0; 
-                }
+                if (hits >= 20 && currentLevelIdx < 9) { setLevel(currentLevelIdx + 1, false); hits = 0; }
                 else { f.style.color = "var(--success)"; f.innerText = "¡Correcto!"; generateNote(); }
-            } else { 
-                hits = 0; f.style.color = "var(--error)"; 
-                f.innerText = `Error: era ${currentCorrectAnswer.toUpperCase()}`; 
-                generateNote(); 
-            }
+            } else { hits = 0; f.style.color = "var(--error)"; f.innerText = `Error: era ${currentCorrectAnswer.toUpperCase()}`; generateNote(); }
             f.style.opacity = "1"; feedbackTimeout = setTimeout(() => f.style.opacity = "0", 800);
         }
 
         function initLevels() {
             const c = document.getElementById('lvl-picker');
             for(let i=0; i<10; i++) {
-                const b = document.createElement('button'); 
-                b.className = `pill-btn ${i===0?'active':''}`; 
+                const b = document.createElement('button'); b.className = `pill-btn ${i===0?'active':''}`; 
                 b.innerText = `Lvl ${i+1}`; b.id = `btn-lvl-${i}`;
-                b.onclick = () => setLevel(i, true); 
-                c.appendChild(b);
+                b.onclick = () => setLevel(i, true); c.appendChild(b);
             }
         }
-
         initLevels(); updateTransposeLabel(); setLevel(0);
     </script>
 </body>
