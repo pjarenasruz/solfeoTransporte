@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Solfeador - Tonalidad Equilibrada</title>
+    <title>Solfeador - Máximo 3 Líneas</title>
     <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
     <style>
         :root {
@@ -99,18 +99,26 @@
             "c/6","d/6","e/6","f/6","g/6","a/6","b/6","c/7"
         ];
 
-        // Índices exactos corregidos para las tónicas en baseNotes
         const clefTonics = {
             "treble": 25, // Sol/4
             "bass": 17,   // Do/3
             "alto": 21    // Do/4
         };
 
-        // Límites de 4 líneas adicionales
+        // LÍMITES AJUSTADOS A 3 LÍNEAS ADICIONALES
         const physicalLimits = {
-            "treble": { min: 14, max: 45 }, // La/2 a Sol/6
-            "bass": { min: 4, max: 35 },   // Do/1 a Do/5
-            "alto": { min: 11, max: 42 }   // Do/2 a Do/6
+            "treble": { 
+                min: 16, // Do/3 (Aprox 3 líneas abajo: La/2 es 4 líneas, Do/3 es 3 líneas)
+                max: 43  // Mi/6 (Aprox 3 líneas arriba)
+            },
+            "bass": { 
+                min: 6,  // Mi/1
+                max: 33  // La/4
+            },
+            "alto": { 
+                min: 13, // La/1
+                max: 40  // Sol/5
+            }
         };
 
         let currentClef = "treble", currentLevelIdx = 0, currentNoteKey = "", currentCorrectAnswer = "";
@@ -151,12 +159,11 @@
             const tonic = clefTonics[currentClef];
             const limit = physicalLimits[currentClef];
             
-            // Ajustamos el span para que el Nivel 1 (idx 0) ya tenga un rango de +/- 3 notas
             let span = currentLevelIdx + 3; 
             let minIdx = tonic - span;
             let maxIdx = tonic + span;
 
-            // Lógica de topes
+            // Lógica de topes corregida para 3 líneas
             if (minIdx < limit.min) {
                 let diff = limit.min - minIdx;
                 minIdx = limit.min;
